@@ -9,13 +9,15 @@ import pileup  as plp
 
 def main():
     """Main entry point for the script."""
-    ref_fa = sys.argv[1]
+#    ref_fa = sys.argv[1]
+    ref_ix = sys.argv[1]
 #    reads  = sys.argv[2]
 #    ref_seq = load_reference(ref_fa)
-    print(u.unpermute_BWT(ref_fa))
-#    align_reads(reads, ref_seq) 
-#    plp.pileup(reads, ref_seq)
 #    ref_seq.index_BWT(100)
+#    plp.pileup(reads, ref_seq)
+#    align_reads(reads, ref_seq)
+    index,count = load_index(ref_ix)
+    print(u.unpermute_BWT(index,count))
 
 
 # TODO: add option for unpaired reads
@@ -49,6 +51,21 @@ def align_reads(read_fn, ref_genome):
 
     mapped.close()
     return 1
+
+def load_index(idxf):
+    idx = open(idxf, "r")
+    index = []
+    count = {"A":0,"C":0,"G":0,"T":0}
+    j = 0
+    for i in idx:
+        entry = i.strip().split(" ")
+        if entry[0] != "$":
+            index.append((entry[0],int(entry[1])))
+            count[index[j][0]] = index[j][1]
+        else:
+            index.append((entry[0]))
+        j += 1
+    return index, count
 
 def load_reference(ref_fn):
     fasta = open(ref_fn, 'r')

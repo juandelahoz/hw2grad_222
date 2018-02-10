@@ -65,7 +65,7 @@ class genome():
         for nt in index:
             if nt != "$":
                 count[nt] += 1
-                if count[nt] % s == 0:
+                if count[nt] % s == 0:    # report counts every "s" nt only
                     fastaidx.write('{} {}\n'.format(nt,str(count[nt])))
                 else:                
                     fastaidx.write(nt + "\n")

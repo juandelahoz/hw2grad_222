@@ -97,7 +97,40 @@ def align_seeded(read, genome):
     position of each kmer length 8"""
     pass
 
-def align_bwt(read, genome):
+def align_bwt(read, index):
     """aligns a read to a reference genome
     following the BWT index"""
+    
+
+
+    up = 0   # pointer to the first (in 1st col)
+    dn = 0   # pointer to the last  (in 1st col)
+
+
     pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

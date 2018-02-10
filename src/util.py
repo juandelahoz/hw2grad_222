@@ -40,38 +40,27 @@ def NumberToPattern(index, k):
     PrefixPattern = NumberToPattern(prefixIndex,k-1)
     return PrefixPattern + symbol
 
-def unpermute_BWT(index):
-        # try to reconstruct the original sequence (just to test if the index is correct!)
-        idx = open(index, "r")
-        index = []
-        nt = ["A","C","G","T"]
-        count = {"A":0,"C":0,"G":0,"T":0}
-        j = 0
-        for i in idx:
-            entry = i.strip().split(" ")
-            if entry[0] != "$":
-                index.append((entry[0],int(entry[1])))
-                count[index[j][0]] = index[j][1]
+
+
+def unpermute_BWT(index,count):
+    # try to reconstruct the original sequence (just to test if the index is correct!)
+    # read the index
+    nt = ["A","C","G","T"]
+    # start unpermuting from the first position
+    seq = index[0][0]
+    pos = index[0][1]
+    while seq[0] != "$":         # until the first character
+        cpos = 0
+        for n in nt:
+            if n != seq[0]:
+                cpos += count[n] # advance first column index per nt
             else:
-                index.append((entry[0]))
-            j += 1
-
-        seq = index[0][0]
-        pos = index[0][1]
-        exit = 0
-        while seq[0] != "$":
-            cpos = 0
-            for n in nt:
-                if n != seq[0]:
-                    cpos += count[n]
-                else:
-                    break
-            cpos += pos
-            seq = index[cpos][0] + seq
-            if index[cpos][0] != "$":
-                pos = index[cpos][1]
-
-        return seq[1:]
+                break
+        cpos += pos              # advance to the position of the nt
+        seq = index[cpos][0] + seq
+        if index[cpos][0] != "$":
+            pos = index[cpos][1]
+    return seq[1:]               # omit initial '$'
 
 def pretty_print_aligned_reads_with_ref(genome_oriented_reads, read_alignments, ref, read_length=50,
                                         line_length=100, read_sep=100, buffer=30):
