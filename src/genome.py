@@ -53,13 +53,19 @@ class genome():
 
         index_m.sort()      # this is the critical step!
 
+        # extract last column from matrix (equivalent to sequence[pos(kmer[0])-1])
         index = ""
+        posit = []
         for kmer in index_m:
-            if kmer[1] == 0:
-                index += "$"   # remember that before the first is the last
-            else:
-                index += sequence[kmer[1]-1]
+            index += sequence[kmer[1]-1]
+            posit.append(     kmer[1]-1)
 
+        count = {"$":0,"A":0,"C":0,"G":0,"T":0}
+        for nt in range(len(index)):
+            count[index[nt]] += 1
+            fastaidx.write('{} {} {}\n'.format( index[nt], count[index[nt]], posit[nt] ))
+
+"""
         s = 1               # keep track of the position of letters each "s"
         count = {"A":0,"C":0,"G":0,"T":0}
         for nt in index:
@@ -71,3 +77,4 @@ class genome():
                     fastaidx.write(nt + "\n")
             else:
                 fastaidx.write(nt + "\n")
+"""
