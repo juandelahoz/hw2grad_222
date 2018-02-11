@@ -12,7 +12,7 @@ def align_trivial(reads, genome): # takes a list with two reads, and a ref genom
     read2_rv = u.rev(read2_fw)
     all_alng = {0:[],1:[]}           # stores all valid alignments for each end of the read
     best_aln = reads                 # contains alignments to report
-    d = 1                            # max number of mismatches allowed when aligning
+    d = 0                            # max number of mismatches allowed when aligning
 
    # iterate only once over regions of the genome of the size of the reads
     for i in range( len(reference) - len(read1_fw) + 1 ):
@@ -122,7 +122,7 @@ def align_bwt(reads, index, count):
         aln2 = perfect_match_bwt(read1_rv, index, count)
         if aln2 != ".":
             alignment.aligned = True
-            alignment.position = aln1
+            alignment.position = aln2
             alignment.strand = "-"
             all_alng[0].append(alignment)
 
@@ -192,7 +192,7 @@ def perfect_match_bwt(read, index, count):
         for n in nt:
             if n != last:
                 cnt += count[n]
-            elif i > 0:                 # dont move if already end
+            elif i > 0:                 # dont move if already end # might be causing problems...
                 up = cnt + index[up][1]
                 dn = cnt + index[dn][1]
                 break

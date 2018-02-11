@@ -64,17 +64,3 @@ class genome():
         for nt in range(len(index)):
             count[index[nt]] += 1
             fastaidx.write('{} {} {}\n'.format( index[nt], count[index[nt]], posit[nt] ))
-
-"""
-        s = 1               # keep track of the position of letters each "s"
-        count = {"A":0,"C":0,"G":0,"T":0}
-        for nt in index:
-            if nt != "$":
-                count[nt] += 1
-                if count[nt] % s == 0:    # report counts every "s" nt only
-                    fastaidx.write('{} {}\n'.format(nt,str(count[nt])))
-                else:                
-                    fastaidx.write(nt + "\n")
-            else:
-                fastaidx.write(nt + "\n")
-"""
