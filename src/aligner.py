@@ -97,39 +97,57 @@ def align_seeded(read, genome):
     position of each kmer length 8"""
     pass
 
-def align_bwt(reads, index, count):
+def align_bwt(reads, index, count, ref_seq):
     """aligns a read to a reference genome
     following the BWT index"""
 
     best_aln = reads                 # contains alignments to report
 
     for i in range(len(reads)):      # for each one of the two ends
-        alignment = copy.deepcopy(reads[i])
-
-      # forward
-        read = alignment.sequence
+      # try forward
+        read = best_aln[i].sequence
         aln = perfect_match_bwt(read, index, count)
         if aln != ".":
-            alignment.aligned = True
-            alignment.position = aln
-            alignment.strand = "+"
-            best_aln[i] = alignment
-      # reverse
+            best_aln[i].strand = "+"
+      # try reverse
         else:
             read = u.rev(read)
             aln = perfect_match_bwt(read, index, count)
             if aln != ".":
-                alignment.aligned = True
-                alignment.position = aln
-                alignment.strand = "-"
-                best_aln[i] = alignment
+                best_aln[i].strand = "-"
+        # save positions
+        if aln != ".":
+            best_aln[i].aligned = True
+            best_aln[i].position = aln
 
-    # if one end is not aligned, try local alignment with the expected region of the genome
-#    if best_aln[0].aligned and not best_aln[1].aligned:
-
-
-#    if best_aln[1].aligned and not best_aln[0].aligned:
-
+###############
+    SNPs,ins,dels = 0,0,0
+    # if one end is not aligned, try local alignment within the expected region of the genome
+    if   best_aln[0].aligned and not best_aln[1].aligned:
+        eor1 = best_aln[0].position + len(best_aln[0].sequence)
+        refe_sl = ref_seq[ eor1 + 75 : eor1 + 175 ]
+        read_sl = best_aln[1].sequence if best_aln[0].strand == "-" else u.rev(best_aln[1].sequence)
+        SNPs,ins,dels = local_align(refe_sl, read_sl)
+        if SNPs != 0:
+            best_aln[1].mismatch  = SNPs
+            best_aln[1].insertion = ins
+            best_aln[1].deletion  = dels
+            best_aln[1].strand = "+" if best_aln[0].strand == "-" else "-"
+            best_aln[1].aligned = True
+            best_aln[1].position = None
+    elif best_aln[1].aligned and not best_aln[0].aligned:
+        eor1    = best_aln[1].position
+        refe_sl = ref_seq[ eor1 - 175 : eor1 - 75 ]
+        read_sl = best_aln[0].sequence if best_aln[1].strand == "-" else u.rev(best_aln[0].sequence)
+        SNPs,ins,dels = local_align(refe_sl, read_sl)
+        if SNPs != 0:
+            best_aln[0].mismatch  = SNPs
+            best_aln[0].insertion = ins
+            best_aln[0].deletion  = dels
+            best_aln[0].strand = "+" if best_aln[0].strand == "-" else "-"
+            best_aln[0].aligned = True
+            best_aln[0].position = None 
+###############
 
     # add to best alignments the information from the other end
     best_aln[0].pair_position = best_aln[1].position
@@ -219,7 +237,7 @@ def local_align(s1, s2):
     i = max_i
     j = max_j
     if (x[i][j] < 43):
-        return 0
+        return 0,0,0
 
     seq1 = ''
     seq2 = ''
