@@ -85,15 +85,15 @@ def align_trivial(reads, genome): # takes a list with two reads, and a ref genom
 def HammingDistance( read, reference , max_mis):
     positions = []
     for i in range(len(read)):
-        if len(positions) > max_mis:
-            return None
         if read[i] != reference[i]:
             positions.append(i)
+        if len(positions) > max_mis:
+            return None
     return positions
 
 def align_seeded(read, genome):
     """aligns a read to a reference genome
-    using a list of lists with the starting
+    using a hash table with the starting
     position of each kmer length 8"""
     pass
 
@@ -101,58 +101,34 @@ def align_bwt(reads, index, count):
     """aligns a read to a reference genome
     following the BWT index"""
 
-    read1_fw = reads[0].sequence
-    read1_rv = u.rev(read1_fw)
-    read2_fw = reads[1].sequence
-    read2_rv = u.rev(read2_fw)
-    all_alng = {0:[],1:[]}           # stores all valid alignments for each end of the read
     best_aln = reads                 # contains alignments to report
 
-  # check end_1
-    alignment = copy.deepcopy(reads[0])
-  # forward
-    aln1 = perfect_match_bwt(read1_fw, index, count)
-    if aln1 != ".":
-        alignment.aligned = True
-        alignment.position = aln1
-        alignment.strand = "+"
-        all_alng[0].append(alignment)
-  # reverse
-    else:
-        aln2 = perfect_match_bwt(read1_rv, index, count)
-        if aln2 != ".":
+    for i in range(len(reads)):      # for each one of the two ends
+        alignment = copy.deepcopy(reads[i])
+
+      # forward
+        read = alignment.sequence
+        aln = perfect_match_bwt(read, index, count)
+        if aln != ".":
             alignment.aligned = True
-            alignment.position = aln2
-            alignment.strand = "-"
-            all_alng[0].append(alignment)
+            alignment.position = aln
+            alignment.strand = "+"
+            best_aln[i] = alignment
+      # reverse
+        else:
+            read = u.rev(read)
+            aln = perfect_match_bwt(read, index, count)
+            if aln != ".":
+                alignment.aligned = True
+                alignment.position = aln
+                alignment.strand = "-"
+                best_aln[i] = alignment
 
-  # check end_2
-    alignment = copy.deepcopy(reads[1])
-  # forward
-    aln3 = perfect_match_bwt(read2_fw, index, count)
-    if aln3 != ".":
-        alignment.aligned = True
-        alignment.position = aln3
-        alignment.strand = "+"
-        all_alng[1].append(alignment)
-  # reverse
-    else:
-        aln4 = perfect_match_bwt(read2_rv, index, count)
-        if aln4 != ".":
-            alignment.aligned = True
-            alignment.position = aln4
-            alignment.strand = "-"
-            all_alng[1].append(alignment)
-
-    # save first alignment if there was any valid for both ends
-    if len(all_alng[0]) > 0:
-        best_aln[0] = all_alng[0][0]
-    if len(all_alng[1]) > 0:
-        best_aln[1] = all_alng[1][0]
+    # if one end is not aligned, try local alignment with the expected region of the genome
+#    if best_aln[0].aligned and not best_aln[1].aligned:
 
 
-# TODO insert local alignment here... use best_aln[0 or 1]
-
+#    if best_aln[1].aligned and not best_aln[0].aligned:
 
 
     # add to best alignments the information from the other end
@@ -206,3 +182,89 @@ def perfect_match_bwt(read, index, count):
         return index[up][2]        # starting position on genome
     else:
         return "."                 # no perfect alignment found
+
+########################################
+def local_align(s1, s2):
+    a = len(s1) + 1 #rows
+    b = len(s2) + 1 #cols
+    max_val = 0
+    x = [[0]*(b) for i in range(a)]
+    bt = [[0]*(b) for i in range(a)]
+    match = 1
+    mm = -1
+    gap = -2
+    ins = -2
+    dels = -1
+
+    for i in range(1, a):
+        for j in range(1, b):
+            if (s1[i-1] == s2[j-1]):
+                t = match
+            else:
+                t = mm
+            arr = [x[i-1][j] + ins, x[i-1][j-1] + t, x[i][j-1] + dels]
+            x[i][j] = max(arr)
+            if (arr.index(x[i][j]) == 1):
+                if (t == match):
+                    bt[i][j] = 1 #match
+                else:
+                    bt[i][j] = 3 #mm
+            else:
+                bt[i][j] = arr.index(x[i][j])
+            if ((x[i][j] > max_val) & (j == b-1) & (i > b)):
+                max_val = x[i][j]
+                max_i = i
+                max_j = j
+    
+    i = max_i
+    j = max_j
+    if (x[i][j] < 43):
+        return 0
+
+    seq1 = ''
+    seq2 = ''
+    ins = {}
+    dels = {}
+    snps = {}
+    num_match = 0
+    num_ins = 0
+    num_del = 0
+    num_mm = 0
+
+
+    while ((j > 0) & (i > 0)):
+        if (bt[i][j] == 1): # match
+            #bt[i][j] = '*'
+            seq1 = s1[i-1] + seq1
+            seq2 = s2[j-1] + seq2
+            i = i - 1
+            j = j - 1
+            num_match = num_match + 1
+            #print(s1[i]+' '+s2[j])
+            #print(j)
+        elif (bt[i][j] == 3): # SNP
+            #bt[i][j] = '*'
+            snps[i-1] = s1[j]
+            seq1 = s1[i-1].lower() + seq1
+            seq2 = s2[j-1].lower() + seq2
+            i = i - 1
+            j = j - 1
+            num_mm = num_mm + 1
+            #print(s1[i]+' != '+s2[j])
+        elif (bt[i][j] == 2): # insertion
+            #bt[i][j] = '*'
+            ins[i-1] = s2[j-1]
+            seq1 = '-' + seq1
+            seq2 = s2[j-1] + seq2
+            j = j - 1
+            num_ins = num_ins + 1
+        elif (bt[i][j] == 0): # deletion
+            #bt[i][j] = '*'
+            dels[i-1] = s2[j-1]
+            seq1 = s1[i-1] + seq1
+            seq2 = '-' + seq2
+            i = i - 1
+            num_del = num_del + 1
+    bt[max_i][max_j] = 88
+    
+    return snps, ins, dels
