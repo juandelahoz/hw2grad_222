@@ -150,6 +150,11 @@ def align_bwt(reads, index, count):
     if len(all_alng[1]) > 0:
         best_aln[1] = all_alng[1][0]
 
+
+# TODO insert local alignment here... use best_aln[0 or 1]
+
+
+
     # add to best alignments the information from the other end
     best_aln[0].pair_position = best_aln[1].position
     best_aln[0].pair_strand   = best_aln[1].strand
