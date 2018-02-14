@@ -1,6 +1,5 @@
 """Script to find variants from a donor in NGS paired end reads."""
 import sys
-import numpy   as np
 import util    as u
 import read    as rd
 import genome  as gm
@@ -51,7 +50,7 @@ def align_reads(read_fn, ref_genome):
             for alignment in aln_reads:
                 mapped.write( alignment.summary() +"\n")
 
-        if read_id % 10 == 0:              # report progress
+        if read_id % 1000 == 0:              # report progress
             print("{} reads aligned".format(read_id))
         read_id += 1
 

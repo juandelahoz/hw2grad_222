@@ -1,4 +1,3 @@
-import numpy as np
 import read
 import genome as gm
 import util as u
@@ -120,34 +119,32 @@ def align_bwt(reads, index, count, ref_seq):
             best_aln[i].aligned = True
             best_aln[i].position = aln
 
-###############
-    SNPs,ins,dels = 0,0,0
+    SNPs,ins,dels,pos = 0,0,0,0
     # if one end is not aligned, try local alignment within the expected region of the genome
     if   best_aln[0].aligned and not best_aln[1].aligned:
         eor1 = best_aln[0].position + len(best_aln[0].sequence)
         refe_sl = ref_seq[ eor1 + 75 : eor1 + 175 ]
         read_sl = best_aln[1].sequence if best_aln[0].strand == "-" else u.rev(best_aln[1].sequence)
-        SNPs,ins,dels = local_align(refe_sl, read_sl)
+        SNPs,ins,dels,pos = local_align(refe_sl, read_sl)
         if SNPs != 0:
             best_aln[1].mismatch  = SNPs
             best_aln[1].insertion = ins
             best_aln[1].deletion  = dels
-            best_aln[1].strand = "+" if best_aln[0].strand == "-" else "-"
-            best_aln[1].aligned = True
-            best_aln[1].position = None
+            best_aln[1].strand    = "+" if best_aln[0].strand == "-" else "-"
+            best_aln[1].aligned   = True
+            best_aln[1].position  = pos + eor1 + 75
     elif best_aln[1].aligned and not best_aln[0].aligned:
         eor1    = best_aln[1].position
         refe_sl = ref_seq[ eor1 - 175 : eor1 - 75 ]
         read_sl = best_aln[0].sequence if best_aln[1].strand == "-" else u.rev(best_aln[0].sequence)
-        SNPs,ins,dels = local_align(refe_sl, read_sl)
+        SNPs,ins,dels,pos = local_align(refe_sl, read_sl)
         if SNPs != 0:
             best_aln[0].mismatch  = SNPs
             best_aln[0].insertion = ins
             best_aln[0].deletion  = dels
-            best_aln[0].strand = "+" if best_aln[0].strand == "-" else "-"
-            best_aln[0].aligned = True
-            best_aln[0].position = None 
-###############
+            best_aln[0].strand    = "+" if best_aln[1].strand == "-" else "-"
+            best_aln[0].aligned   = True
+            best_aln[0].position  = pos + eor1 - 175
 
     # add to best alignments the information from the other end
     best_aln[0].pair_position = best_aln[1].position
@@ -181,9 +178,9 @@ def perfect_match_bwt(read, index, count):
         last = read[i]
 
         # search within range until match
-        while index[up][0] != last:
+        while index[up][0] != last and up < len(index)-1:
             up += 1
-        while index[dn][0] != last:
+        while index[dn][0] != last and up > 0:
             dn -= 1
 
         # move pointers to new position in index
@@ -214,6 +211,8 @@ def local_align(s1, s2):
     ins = -2
     dels = -1
 
+    max_i,max_j = 0,0
+    
     for i in range(1, a):
         for j in range(1, b):
             if (s1[i-1] == s2[j-1]):
@@ -237,52 +236,58 @@ def local_align(s1, s2):
     i = max_i
     j = max_j
     if (x[i][j] < 43):
-        return 0,0,0
+        return 0,0,0,0
 
     seq1 = ''
     seq2 = ''
     ins = {}
     dels = {}
-    snps = {}
+    snps = []
     num_match = 0
     num_ins = 0
     num_del = 0
     num_mm = 0
+    p_ins = 0 # how many prior positions were insertions
+    p_del = 0 # how many prior positions were deletions
 
 
     while ((j > 0) & (i > 0)):
         if (bt[i][j] == 1): # match
-            #bt[i][j] = '*'
             seq1 = s1[i-1] + seq1
             seq2 = s2[j-1] + seq2
             i = i - 1
             j = j - 1
             num_match = num_match + 1
-            #print(s1[i]+' '+s2[j])
-            #print(j)
+            if (p_ins > 0):
+                ins[j] = p_ins
+                p_ins = 0
+            if (p_del > 0):
+                dels[j] = p_del
+                p_del = 0
         elif (bt[i][j] == 3): # SNP
-            #bt[i][j] = '*'
-            snps[i-1] = s1[j]
+            snps.append(j-1)
             seq1 = s1[i-1].lower() + seq1
             seq2 = s2[j-1].lower() + seq2
             i = i - 1
             j = j - 1
             num_mm = num_mm + 1
-            #print(s1[i]+' != '+s2[j])
+            if (p_ins > 0):
+                ins[j] = p_ins
+                p_ins = 0
+            if (p_del > 0):
+                ins[j] = p_del
+                p_del = 0
         elif (bt[i][j] == 2): # insertion
-            #bt[i][j] = '*'
-            ins[i-1] = s2[j-1]
+            p_ins = p_ins + 1
             seq1 = '-' + seq1
             seq2 = s2[j-1] + seq2
             j = j - 1
             num_ins = num_ins + 1
         elif (bt[i][j] == 0): # deletion
-            #bt[i][j] = '*'
-            dels[i-1] = s2[j-1]
+            p_del = p_del + 1
             seq1 = s1[i-1] + seq1
             seq2 = '-' + seq2
             i = i - 1
             num_del = num_del + 1
-    bt[max_i][max_j] = 88
     
-    return snps, ins, dels
+    return snps, ins, dels, i
