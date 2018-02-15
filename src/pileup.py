@@ -9,67 +9,53 @@ def pileup(aligns, ref_genome):
 
     # open aligned reads file, and pileup file
     reads_f  = open(aligns, 'r')
-    pileup_f = open(aligns + ".plp", "w")
 
     # set variables
     genome = ref_genome.getSequence()[0]
     pile   = [0] * len(genome)
-    sym    = {"A":0,"C":1,"G":2,"T":3}
-    let    = {0:"A",1:"C",2:"G",3:"T"}
-    donor  = [list(pile),list(pile),list(pile),list(pile)]
-    end    = False         # flag for end of reads
-    window = 1000          # size of the window to slide
-
-    # write with the expected format
-    pileup_f.write(">" + list(ref_genome.genome.keys())[0] +"\n")
-    pileup_f.write(">SNP\n")
 
     start = 0
     reads = []
-    # keep function running while there are reads in file
-    while not end:
+    window = 1000          # size of the window to slide
 
-        # collect the information of all the reads inside the window
-        for read in reads_f:
-            read = read.strip().split('\t')
-            seq,init,pos = read[0],int(read[3]),read[2]
-            if pos == "-":
-                seq = u.rev(seq)                   # reverse if inverted
-            reads.append((seq,init))               # save the read
-            if init >= start + window:             # stop with the first that scapes
-                break                              #           the end of the window
+    snps = {}
+    dels = {}              # format: key=position, vals=(ref, alt, support)
+    inse = {}
 
-        for read in reads:
-            seq  = read[0]                         # retrieve the reads from array
-            init = read[1]
-            for i in range(len(seq)):              # position by position of each read
-                donor[ sym[seq[i]] ][init+i] += 1  #  add to PILEUP!
-        
-        # call variants:
-        depth = 0
-        dom = 0
-        final = min(len(genome), start + window)
-        for j in range( start, final ):     # for each position in the window ...
-            don = genome[j]                      # by default, the donor is = to reference
-            for nt in range(4):                  # for each nucleotide... (ACGT)
-                depth += donor[nt][j]        # add to sequencing depth for position j
-                if dom < donor[nt][j]:
-                    dom = donor[nt][j]   # save the max depth for any nucleotide in pos j
-                    don = let[nt]        #  and the identity of that nucleotide
-            if don != genome[j]:         # if donor and reference diverge...
-                if depth > 2:                                # QC: and donor has >2 reads
-                    if float(dom)/float(depth) > 0.6:        # QC: and freq(nt) >0.6
-                        #print(genome[j],donor[0][j],donor[1][j],donor[2][j],donor[3][j],don,j)
-                        pileup_f.write(genome[j] +","+ don +","+ str(j) +"\n")
-            depth = 0
-            dom = 0
-        
-        # reset variables or finish outputing
-        if len(genome) > start + window:
-            start += window
-            reads = []
-        else:
-            end = True
+    # collect the information of all the reads inside the window
+    for read in reads_f:
+        read = read.strip().split('\t')
+        seq,init,pos = read[0],int(read[3]),read[2]
+        if pos == "-":
+            seq = u.rev(seq)                   # reverse if inverted
+
+        # get differences if any:
+        # SNPs
+        if read[4] != ".":
+            for i in map(int, read[4].split(",")):
+                if (init + i) in snps:        # add support if it exists
+                        # pos_on_ref      ref_allele  alt_allele         support +1
+                    snps[init + i] = (genome[init + i],   seq[i],   (snps[init+i][2]+1) )
+                else:                          # or create the event if it doesn't
+                    snps[init + i] = (genome[init + i],   seq[i], 1)
+        # deletions
+        if read[5] != ".":
+            pass
+        # insertions
+        if read[7] != ".":
+            pass
+
+        # write with the expected format
+    pileup_f = open(aligns + ".plp", "w")
+
+    pileup_f.write(">" + list(ref_genome.genome.keys())[0] +"\n")
+    pileup_f.write(">SNP\n")
+    snps_pos = list(snps.keys())
+    snps_pos.sort()
+    for j in snps_pos:
+        if snps[j][2] > 3:
+            pileup_f.write( snps[j][0] + "," + snps[j][1] + "," + str(j) + "\n")
 
     pileup_f.close()
+
     return 1
