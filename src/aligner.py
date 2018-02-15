@@ -219,6 +219,14 @@ def local_align(s1, s2):
                 t = match
             else:
                 t = mm
+            if (bt[i-1][j] == 0):
+                ins = -1
+            else:
+                ins = -3
+            if (bt[i][j-1] == 2):
+                dels = -1
+            else:
+                dels = -3
             arr = [x[i-1][j] + ins, x[i-1][j-1] + t, x[i][j-1] + dels]
             x[i][j] = max(arr)
             if (arr.index(x[i][j]) == 1):
@@ -235,7 +243,7 @@ def local_align(s1, s2):
     
     i = max_i
     j = max_j
-    if (x[i][j] < 43):
+    if (x[i][j] < 38):
         return 0,0,0,0
 
     seq1 = ''

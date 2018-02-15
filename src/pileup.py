@@ -12,15 +12,9 @@ def pileup(aligns, ref_genome):
 
     # set variables
     genome = ref_genome.getSequence()[0]
-    pile   = [0] * len(genome)
-
-    start = 0
-    reads = []
-    window = 1000          # size of the window to slide
-
     snps = {}
-    dels = {}              # format: key=position, vals=(ref, alt, support)
-    inse = {}
+    dels = {}   # format: key=position, vals=(ref, (alt,) support)
+    insr = {}
 
     # collect the information of all the reads inside the window
     for read in reads_f:
@@ -33,22 +27,61 @@ def pileup(aligns, ref_genome):
         # SNPs
         if read[4] != ".":
             for i in map(int, read[4].split(",")):
-                if (init + i) in snps:        # add support if it exists
-                        # pos_on_ref      ref_allele  alt_allele         support +1
-                    snps[init + i] = (genome[init + i],   seq[i],   (snps[init+i][2]+1) )
+                # add support if it exists (position and allele)
+                if (init + i) in snps:
+                    if seq[i] == snps[init + i][1]:
+                            # pos_on_ref      ref_allele  alt_allele         support +1
+                        snps[init + i] = (genome[init + i],   seq[i],   (snps[init+i][2]+1) )
                 else:                          # or create the event if it doesn't
                     snps[init + i] = (genome[init + i],   seq[i], 1)
+
         # deletions
         if read[5] != ".":
-            pass
+            pos_d = list(map(int, read[5].split(",")))
+            ale_d = list(map(int, read[6].split(",")))
+            for i in range(len(pos_d)):
+                pi_del = init + pos_d[i] + 1
+                pf_del = init + pos_d[i] + 1 + ale_d[i]
+                # add support if it exists (position and allele)
+                if pi_del in dels:
+                    if dels[pi_del][0] == genome[ pi_del:pf_del ]:
+                        dels [pi_del][1] += 1
+                else:                          # or create the event if it doesn't
+                    dels[pi_del] = [genome[ pi_del:pf_del ],  1]
+
         # insertions
         if read[7] != ".":
-            pass
+            pos_i = list(map(int, read[7].split(",")))
+            ale_i = list(map(int, read[8].split(",")))
+            for i in range(len(pos_i)):
+                pi_ins = pos_i[i] + 1
+                pf_ins = pos_i[i] + 1 + ale_i[i]
+                p_geno = pos_i[i] + 1 + init
+                # add support if it exists (position and allele)
+                if p_geno in insr:
+                    if insr[p_geno][0] == seq[ pi_ins:pf_ins ]:
+                        insr[p_geno][1] += 1
+                else:                          # or create the event if it doesn't
+                    insr[p_geno] = [seq[ pi_ins:pf_ins ],  1]
 
         # write with the expected format
     pileup_f = open(aligns + ".plp", "w")
-
     pileup_f.write(">" + list(ref_genome.genome.keys())[0] +"\n")
+
+    pileup_f.write(">INS\n")
+    insr_pos = list(insr.keys())
+    insr_pos.sort()
+    for j in insr_pos:
+        if insr[j][1] > 2:
+            pileup_f.write( insr[j][0] + "," + str(j) + "\n")
+
+    pileup_f.write(">DEL\n")
+    dels_pos = list(dels.keys())
+    dels_pos.sort()
+    for j in dels_pos:
+        if dels[j][1] > 2:
+            pileup_f.write( dels[j][0] + "," + str(j) + "\n")
+
     pileup_f.write(">SNP\n")
     snps_pos = list(snps.keys())
     snps_pos.sort()
