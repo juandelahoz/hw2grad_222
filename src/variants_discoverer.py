@@ -48,7 +48,8 @@ def align_reads(read_fn, ref_genome):
             aln_reads = aln.align_bwt([read_1,read_2], index, count, genome_seq) # BWT
 #            aln_reads = aln.align_trivial([read_1,read_2], ref_genome) # trivial
             for alignment in aln_reads:
-                mapped.write( alignment.summary() +"\n")
+                if alignment.aligned:
+                    mapped.write( alignment.summary() +"\n")
 
         if read_id % 1000 == 0:              # report progress
             print("{} reads aligned".format(read_id))
